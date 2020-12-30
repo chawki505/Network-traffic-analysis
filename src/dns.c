@@ -146,18 +146,79 @@ void dns_print_header(u_char * data){
     free(flags);
 }
 
+char * dns_get_response_data(struct dns_response * a){
+    #define A 1
+    #define NS 2
+    #define CNAME 5
+    #define PTR 12
+    #define MX 15
+    char * res = NULL;
+    switch(a->atype){
+        case A :
+            if(a->aclass != 1) break;
+            struct in_addr ip_addr;
+            memcpy(&(ip_addr.s_addr), a->data, sizeof(int32_t));
+            res = inet_ntoa(ip_addr);
+            break;
+        case NS :
+        case CNAME :
+        case PTR :
+            res = (char *) a->data;
+            break;
+        case MX :
+            ;
+            uint16_t preference;
+            memcpy(&preference, a->data, sizeof(uint16_t));
+            char * exchange = parse_name(a->data + sizeof(uint16_t));
+            res = malloc(512);
+            snprintf(res, 512, "Preference %d | Exchange %s", preference, exchange);
+            break;
+        default :
+            res = "OTHER";
+            break;
+    }
+    return res;
+}
+
+char * dns_get_response_type(struct dns_response * a){
+    #define A 1
+    #define NS 2
+    #define CNAME 5
+    #define PTR 12
+    #define MX 15
+    char * res = NULL;
+    switch(a->atype){
+        case A :
+            res = "A";
+            break;
+        case NS :
+            res = "NS";
+            break;
+        case CNAME :
+            res = "CNAME";
+            break;
+        case PTR :
+            res = "PTR";
+            break;
+        case MX :
+            res = "MX";
+            break;
+        default :
+            res = "OTHER";
+            break;
+    }
+    return res;
+}
+
 void dns_print_answer(struct dns_response * a){
     dns_print_question(a->query);
     printf("** DNS ANSWER :\n");
     printf("\tNAME : %s\n", a->aname);
-    printf("\tTYPE : %d\n", a->atype);
-    printf("\tCLASS : %d\n", a->aclass);
+    printf("\tTYPE : %s\n", dns_get_response_type(a));
+    printf("\tCLASS : %s\n", (a->aclass==1)?"IN":"OTHER");
     printf("\tTTL : %d\n", a->ttl);
     printf("\tDATA LENGTH : %d\n", a->data_length);
-    printf("\tDATA : %s\n", a->data);
-    
-    // for(int i = 0; i<a->data_length; i++) printf("%c", data[i]);
-
+    printf("\tDATA : %s\n", dns_get_response_data(a));
 }
 
 uint32_t dns_get_question_size(struct dns_query * q){
@@ -198,7 +259,6 @@ struct dns_response * dns_get_answer(u_char * data, unsigned int dataLength){
     if((mask & ntohs(decide)) == mask){
         mask = createMask(0, 13);
         uint16_t addr_offset =  mask & ntohs(decide);
-        printf(">>> ADR OFFSET = %d", addr_offset);
         offset += 2;
         ans->aname = parse_name(data + addr_offset);
     }
