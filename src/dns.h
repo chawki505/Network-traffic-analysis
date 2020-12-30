@@ -22,5 +22,8 @@ struct dnsheader {
 
 char * dns_get_question(u_char * data, unsigned int dataLength);
 void dns_print_header(u_char * data);
+char * dns_get_answer(u_char * data, unsigned int dataLength);
+// returns 1 if RESPONSE and 0 if REQUEST
+int dns_get_type(u_char * data);
 
 #endif
