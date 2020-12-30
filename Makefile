@@ -1,13 +1,13 @@
 include Makefile.version
 
 CC=gcc
-LDFLAGS=`pkg-config --libs libpcap` -fsanitize=undefined
+LDFLAGS=`pkg-config --libs libpcap`
 CFLAGS=-Wall `pkg-config --cflags libpcap` \
-		-D YEAR=$(ANNEE) -D VERSION=$(VERSION) \
-		-g -fsanitize=undefined
+		-g
 OBJ=\
 	src/main.o \
-	src/utils.o
+	src/utils.o \
+	src/dns.o
 
 TARGET=dpi
 

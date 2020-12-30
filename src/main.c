@@ -14,8 +14,10 @@
 #include <arpa/inet.h>
 
 #include "utils.h"
+#include "dns.h"
 
-void packetHandler(struct pcap_pkthdr *header, const u_char **packet);
+void packetHandler(struct pcap_pkthdr *header, const u_char *packet);
+
 
 int main(int argc, char *argv[]) {
     const char *input_file = NULL;
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]) {
     printf("- Opened %s attempting to read packet lengths ...\n", input_file);
 
     int compteur = 0;
-    header = (struct pcap_pkthdr *) malloc(sizeof(struct pcap_pkthdr));
+    header = malloc(sizeof(struct pcap_pkthdr));
 
     // Check if the memory has been successfully allocated by malloc or not
     if (header == NULL) {
@@ -68,7 +70,7 @@ int main(int argc, char *argv[]) {
         }
         compteur++;
         printf("\n\n");
-        packetHandler(header, &packet);
+        packetHandler(header, packet);
     }
     printf("- Finish !\n");
 
@@ -83,7 +85,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
 }
 
-void packetHandler(struct pcap_pkthdr *header, const u_char **packet) {
+void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
 
     const struct ether_header *ethernetHeader;
     const struct ip *ipHeader;
@@ -123,7 +125,6 @@ void packetHandler(struct pcap_pkthdr *header, const u_char **packet) {
             //http port = 80 , https port = 443
             if (sourcePort == 80 || sourcePort == 443 || destPort == 80 || destPort == 443) {
                 //print http protocol
-
             }
 
             if (tcpHeader->th_flags & TH_SYN) {
@@ -139,8 +140,19 @@ void packetHandler(struct pcap_pkthdr *header, const u_char **packet) {
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
 
+            printf("%d %d\n", sourcePort, destPort);
+            printf("#####\n");
+            dns_print_header(data);
+            char * domain_name = dns_get_question(data, dataLength);
+            printf("** QUESTION : %s\n", domain_name);
+            free(domain_name);
+            for(int i = sizeof(struct dnsheader); i<dataLength; i++) printf("%c", data[i]);
+            printf("%.*s", dataLength, data);
+            printf("#####\n");
+            
             if (sourcePort == 53 || destPort == 53) {
                 //print dns
+                
             }
         } else if (ipHeader->ip_p == IPPROTO_ICMP) {
             //print icmp
