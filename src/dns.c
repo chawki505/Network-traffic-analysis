@@ -195,18 +195,15 @@ struct dns_response * dns_get_answer(u_char * data, unsigned int dataLength){
     unsigned mask = createMask(14,15);
     uint16_t decide;
     memcpy(&decide, data + offset, sizeof(uint16_t));
-    printf("DECIDER %x -- %x/%x\n", decide, *((u_char *)&decide), *(((u_char *)&decide)+1));
-    
-    if((mask & decide) == 3){
+    if((mask & ntohs(decide)) == mask){
         mask = createMask(0, 13);
-        uint16_t addr_offset =  mask & decide;
-        printf(">>> ADR OFFSET = %x", addr_offset);
+        uint16_t addr_offset =  mask & ntohs(decide);
+        printf(">>> ADR OFFSET = %d", addr_offset);
         offset += 2;
         ans->aname = parse_name(data + addr_offset);
     }
     else {
-        // ans->aname = parse_name(data + offset);
-        ans->aname = "";
+        ans->aname = parse_name(data + offset);
         offset += strlen(ans->aname)+2;
     }
     memcpy(&(ans->atype), data + offset, sizeof(uint16_t));
