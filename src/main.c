@@ -139,24 +139,22 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
 
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
-
-            printf("%d %d\n", sourcePort, destPort);
-            printf("#####\n");
-            dns_print_header(data);
-            if(dns_get_type(data) == 1){
-                struct dns_response * a = dns_get_answer(data, dataLength);
-                dns_print_answer(a);
-                free(a);
-            }
-            else {
-                struct dns_query * q = dns_get_question(data, dataLength);
-                dns_print_question(q);
-                free(q);
-            }
-            printf("#####\n");
             
             if (sourcePort == 53 || destPort == 53) {
-                //print dns
+                
+                printf("======================= DNS PACKET =======================\n\n");
+                dns_print_header(data);
+                if(dns_get_type(data) == 1){
+                    struct dns_response * a = dns_get_answer(data, dataLength);
+                    dns_print_answer(a);
+                    free(a);
+                }
+                else {
+                    struct dns_query * q = dns_get_question(data, dataLength);
+                    dns_print_question(q);
+                    free(q);
+                }
+                printf("==========================================================\n");
                 
             }
         } else if (ipHeader->ip_p == IPPROTO_ICMP) {
