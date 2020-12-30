@@ -26,11 +26,18 @@ For `pkg-config` to find libpcap you may need to set:
 $ export PKG_CONFIG_PATH="/usr/local/opt/libpcap/lib/pkgconfig:$PKG_CONFIG_PATH"
 ```
 
-2. in `Linux` :
+2. in `Ubuntu` :
 
 ```shell
 $ sudo apt-get update -y
 $ sudo apt-get install -y libpcap-dev
+```
+
+3. in `Arch` :
+
+```shell
+$ sudo pacman -Syu
+$ sudo pacman -S libpcap
 ```
 
 ### Compilation
@@ -38,7 +45,6 @@ $ sudo apt-get install -y libpcap-dev
 You can compile the project using the `make` command:
 
 ```shell
-$ cd dpi-project
 $ make
 ```
 
