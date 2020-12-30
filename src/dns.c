@@ -1,14 +1,40 @@
 #include "dns.h"
 
-char * dns_get_question(u_char * data, unsigned int dataLength){
-    char * domain_name = malloc(DNS_NAME_MAXSIZE);
-    memset(domain_name, 0, DNS_NAME_MAXSIZE);
-    for(int i =  sizeof(struct dnsheader); i < dataLength; i++){
-        if(data[i] == '\n')
-            break;
-        domain_name[i-sizeof(struct dnsheader)] = data[i];
-    }
-    return domain_name;
+void dns_print_question(struct dns_query * q){
+    printf("** DNS QUERY :\n");
+    printf("\tNAME : %s\n", q->qname);
+    printf("\tTYPE : %d\n", q->qtype);
+    printf("\tCLASS : %d\n", q->qclass);
+}
+
+char * parse_name(u_char * unparsed_name){
+    char * name = malloc(DNS_NAME_MAXSIZE);
+    for(int i=0; i < strlen((const char*)unparsed_name); i++) 
+	{
+		int n= (int) unparsed_name[i];
+		for(int j=0; j < n; j++) 
+		{
+			name[i]=unparsed_name[i+1];
+			i=i+1;
+		}
+		name[i]='.';
+	}
+    name[strlen(name)-1] = '\0';
+	return name;
+}
+
+struct dns_query * dns_get_question(u_char * data, unsigned int dataLength){
+    struct dns_query * qst = malloc(sizeof(struct dns_query));
+    memset(qst, 0, sizeof(struct dns_query));
+    char * name = parse_name(data + sizeof(struct dnsheader));
+    uint32_t offset = sizeof(struct dnsheader) + strlen(name)+2;
+    qst->qname = name;
+    memcpy(&(qst->qtype), data + offset, sizeof(uint16_t));
+    qst->qtype = ntohs(qst->qtype);
+    offset +=2;
+    memcpy(&(qst->qclass), data + offset, sizeof(uint16_t));
+    qst->qclass = ntohs(qst->qclass);
+    return qst;
 }
 
 unsigned  createMask(unsigned a, unsigned b)
@@ -120,6 +146,24 @@ void dns_print_header(u_char * data){
     free(flags);
 }
 
+void dns_print_answer(struct dns_response * a){
+    dns_print_question(a->query);
+    printf("** DNS ANSWER :\n");
+    printf("\tNAME : %s\n", a->aname);
+    printf("\tTYPE : %d\n", a->atype);
+    printf("\tCLASS : %d\n", a->aclass);
+    printf("\tTTL : %d\n", a->ttl);
+    printf("\tDATA LENGTH : %d\n", a->data_length);
+    printf("\tDATA : %s\n", a->data);
+    
+    // for(int i = 0; i<a->data_length; i++) printf("%c", data[i]);
+
+}
+
+uint32_t dns_get_question_size(struct dns_query * q){
+    return sizeof(uint16_t)*2 + strlen(q->qname) + 2;
+}
+
 int dns_get_type(u_char * data) {
     struct dnsheader * header = (struct dnsheader *) data;
     uint16_t control = header->flags;
@@ -129,7 +173,7 @@ int dns_get_type(u_char * data) {
 
 
 char * extract_line(u_char * start){
-    u_char * p = start;
+    u_char * p = start+1;
     char * res = malloc(DNS_NAME_MAXSIZE);
     uint32_t i = 0;
     while(*p != '\n'){
@@ -140,16 +184,46 @@ char * extract_line(u_char * start){
     return res;
 }
 
-char * dns_get_answer(u_char * data, unsigned int dataLength){
-    char * qst = dns_get_question(data, dataLength);
-    uint32_t offset = sizeof(struct dnsheader) + strlen(qst);
-    free(qst);
-    u_char * pos_p = data + offset;
-    char * domain_name = extract_line(pos_p);
-    printf("** ANSWER :\n");
-    printf("\t DOMAIN NAME : %s", domain_name);
-    offset += strlen(domain_name);
-    free(domain_name);
-    for(int i = offset; i<dataLength; i++) printf("%c", data[i]);
-    return NULL;
+struct dns_response * dns_get_answer(u_char * data, unsigned int dataLength){
+
+    struct dns_response * ans = malloc(sizeof(struct dns_response));
+    memset(ans, 0, sizeof(struct dns_response));
+    ans->query = dns_get_question(data, dataLength);
+
+
+    uint32_t offset = sizeof(struct dnsheader) + dns_get_question_size(ans->query);
+    unsigned mask = createMask(14,15);
+    uint16_t decide;
+    memcpy(&decide, data + offset, sizeof(uint16_t));
+    printf("DECIDER %x -- %x/%x\n", decide, *((u_char *)&decide), *(((u_char *)&decide)+1));
+    
+    if((mask & decide) == 3){
+        mask = createMask(0, 13);
+        uint16_t addr_offset =  mask & decide;
+        printf(">>> ADR OFFSET = %x", addr_offset);
+        offset += 2;
+        ans->aname = parse_name(data + addr_offset);
+    }
+    else {
+        // ans->aname = parse_name(data + offset);
+        ans->aname = "";
+        offset += strlen(ans->aname)+2;
+    }
+    memcpy(&(ans->atype), data + offset, sizeof(uint16_t));
+    ans->atype = ntohs(ans->atype);
+    offset +=2;
+    memcpy(&(ans->aclass), data + offset, sizeof(uint16_t));
+    ans->aclass = ntohs(ans->aclass);
+
+    offset += 2;
+    memcpy(&(ans->ttl), data + offset, sizeof(uint32_t));
+    ans->ttl = ntohl(ans->ttl);
+
+    offset += 4;
+    memcpy(&(ans->data_length), data + offset, sizeof(uint16_t));
+    ans->data_length = ntohs(ans->data_length);
+    offset += 2;
+    ans->data = data + offset;
+    
+    return ans;
 }
