@@ -23,7 +23,7 @@ unsigned  createMask(unsigned a, unsigned b)
 char * dns_parse_flags(uint16_t control){
     char * flags = malloc(512);
     memset(flags, 0, 512);
-    char * QR = "-";
+    char * QR = "REQ";
     if((control >> 15) & 1) QR = "RESP";
     char * OpCode;
     unsigned mask = createMask(11, 14);
@@ -118,4 +118,38 @@ void dns_print_header(u_char * data){
     printf("\tAUTHORITY COUNT = %hu\n", ntohs(header->AUTHCOUNT));
     printf("\tADDITIONAL COUNT = %hu\n", ntohs(header->ADDCOUNT));
     free(flags);
+}
+
+int dns_get_type(u_char * data) {
+    struct dnsheader * header = (struct dnsheader *) data;
+    uint16_t control = header->flags;
+    if((control >> 15) & 1) return 1;
+    return 0;
+}
+
+
+char * extract_line(u_char * start){
+    u_char * p = start;
+    char * res = malloc(DNS_NAME_MAXSIZE);
+    uint32_t i = 0;
+    while(*p != '\n'){
+        res[i] = *p;
+        i++;
+        p++;
+    }
+    return res;
+}
+
+char * dns_get_answer(u_char * data, unsigned int dataLength){
+    char * qst = dns_get_question(data, dataLength);
+    uint32_t offset = sizeof(struct dnsheader) + strlen(qst);
+    free(qst);
+    u_char * pos_p = data + offset;
+    char * domain_name = extract_line(pos_p);
+    printf("** ANSWER :\n");
+    printf("\t DOMAIN NAME : %s", domain_name);
+    offset += strlen(domain_name);
+    free(domain_name);
+    for(int i = offset; i<dataLength; i++) printf("%c", data[i]);
+    return NULL;
 }
