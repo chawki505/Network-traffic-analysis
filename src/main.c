@@ -1,14 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <pcap/pcap.h>
+
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <net/if.h>
+#include <netinet/if_ether.h>
+#include <net/ethernet.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <arpa/inet.h>
+
 #include "utils.h"
 
+void packetHandler(struct pcap_pkthdr *header, const u_char **packet);
 
 int main(int argc, char *argv[]) {
-    char *input_file = NULL;
+    const char *input_file = NULL;
     pcap_t *packets = NULL;
-    const u_char *packet;
-    struct pcap_pkthdr *header = malloc(sizeof(struct pcap_pkthdr));
+    const u_char *packet = NULL;
+    struct pcap_pkthdr *header = NULL;
     char errbuf[PCAP_ERRBUF_SIZE];
 
     printf("- Checking arg count ...\n");
@@ -34,10 +47,20 @@ int main(int argc, char *argv[]) {
 
     printf("- Opened %s attempting to read packet lengths ...\n", input_file);
 
-    //print all packets
     int compteur = 0;
+    header = (struct pcap_pkthdr *) malloc(sizeof(struct pcap_pkthdr));
+
+    // Check if the memory has been successfully allocated by malloc or not
+    if (header == NULL) {
+        printf("Memory not allocated.\n");
+        exit(EXIT_FAILURE);
+    }
+    //init struct with 0
+    memset(header, 0, sizeof(struct pcap_pkthdr));
+
+    //print all packets
     while (pcap_next_ex(packets, &header, &packet) != -2) {
-        printf("\t%d - Packet of length [%d bytes] [%d bits]\n", compteur, header->len, header->len * 8);
+        printf("\n\t%d - Packet of length [%d bytes] [%d bits]\n", compteur, header->len, header->len * 8);
         printf("\n\t");
         for (int i = 0; i < header->len; i++) {
             if (i % 8 == 0 && i != 0) printf("\n\t");
@@ -45,8 +68,11 @@ int main(int argc, char *argv[]) {
         }
         compteur++;
         printf("\n\n");
+        packetHandler(header, &packet);
     }
     printf("- Finish !\n");
+
+    //free(header);
 
     //close packet file
     pcap_close(packets);
@@ -55,4 +81,69 @@ int main(int argc, char *argv[]) {
     printf("\tClosing %s OK!\n", input_file);
 
     return EXIT_SUCCESS;
+}
+
+void packetHandler(struct pcap_pkthdr *header, const u_char **packet) {
+
+    const struct ether_header *ethernetHeader;
+    const struct ip *ipHeader;
+
+    const struct tcphdr *tcpHeader;
+    const struct udphdr *udpHeader;
+
+    char sourceIP[INET_ADDRSTRLEN];
+    char destIP[INET_ADDRSTRLEN];
+
+    u_int sourcePort, destPort;
+    u_char *data;
+
+    unsigned int dataLength = 0;
+
+    //ethernet fragment
+    ethernetHeader = (struct ether_header *) packet;
+
+    if (ntohs(ethernetHeader->ether_type) == ETHERTYPE_IP) {
+
+        //ip fragment
+        ipHeader = (struct ip *) (packet + sizeof(struct ether_header));
+
+        inet_ntop(AF_INET, &(ipHeader->ip_src), sourceIP, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(ipHeader->ip_dst), destIP, INET_ADDRSTRLEN);
+
+
+        //TCP fragment
+        if (ipHeader->ip_p == IPPROTO_TCP) {
+            tcpHeader = (struct tcphdr *) (packet + sizeof(struct ether_header) + sizeof(struct ip));
+            sourcePort = ntohs(tcpHeader->th_sport);
+            destPort = ntohs(tcpHeader->th_dport);
+
+            data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
+            dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
+
+            //http port = 80 , https port = 443
+            if (sourcePort == 80 || sourcePort == 443 || destPort == 80 || destPort == 443) {
+                //print http protocol
+
+            }
+
+            if (tcpHeader->th_flags & TH_SYN) {
+                //print syn tcp
+            }
+
+            //UDP fragment
+        } else if (ipHeader->ip_p == IPPROTO_UDP) {
+            udpHeader = (struct udphdr *) (packet + sizeof(struct ether_header) + sizeof(struct ip));
+            sourcePort = ntohs(udpHeader->uh_sport);
+            destPort = ntohs(udpHeader->uh_dport);
+
+            data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
+            dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
+
+            if (sourcePort == 53 || destPort == 53) {
+                //print dns
+            }
+        } else if (ipHeader->ip_p == IPPROTO_ICMP) {
+            //print icmp
+        }
+    }
 }
