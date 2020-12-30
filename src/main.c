@@ -143,11 +143,16 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             printf("%d %d\n", sourcePort, destPort);
             printf("#####\n");
             dns_print_header(data);
-            char * question = dns_get_question(data, dataLength);
-            printf("** QUESTION : %s\n", question);
-            free(question);
-            if(dns_get_type(data) == 1) dns_get_answer(data, dataLength);
-            
+            if(dns_get_type(data) == 1){
+                struct dns_response * a = dns_get_answer(data, dataLength);
+                dns_print_answer(a);
+                free(a);
+            }
+            else {
+                struct dns_query * q = dns_get_question(data, dataLength);
+                dns_print_question(q);
+                free(q);
+            }
             printf("#####\n");
             
             if (sourcePort == 53 || destPort == 53) {
