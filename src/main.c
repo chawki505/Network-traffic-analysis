@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
     pcap_t *packets = NULL;
     const u_char *packet = NULL;
     struct pcap_pkthdr *header = NULL;
-    char errbuf[PCAP_ERRBUF_SIZE];
+    char err_buf[PCAP_ERRBUF_SIZE];
     system("clear");
     printf("- Checking arg count ...\n");
     //test input arg
@@ -22,11 +22,11 @@ int main(int argc, char *argv[]) {
     printf("- Input File: %s ...\n", input_file);
 
     //read pcap file
-    packets = pcap_open_offline(input_file, errbuf);
+    packets = pcap_open_offline(input_file, err_buf);
 
     //test read .pcap file
     if (packets == NULL) {
-        printf("\tERROR: Could not open file - %s", errbuf);
+        printf("\tERROR: Could not open file - %s", err_buf);
         exit(EXIT_FAILURE);
     }
 

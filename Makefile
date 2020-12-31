@@ -1,5 +1,3 @@
-include Makefile.version
-
 CC=gcc
 LDFLAGS=`pkg-config --libs libpcap`
 CFLAGS=-Wall -g `pkg-config --cflags libpcap`
@@ -19,7 +17,6 @@ TARGET=dpi
 .SUFFIXES:
 
 all: $(TARGET)
-
 
 clean:
 	rm -f $(OBJ) $(TARGET)
