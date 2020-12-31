@@ -216,7 +216,7 @@ struct Http_Response *http_parse_response(char *data, size_t length) {
         raw += 1;
     }
 
-    //test if is unsupoted version
+    //test if is unsupported version
     if (memcmp(resp->version, VERSIONS[UNSUPPORTED_VERSION], strlen("UNSUPPORTED_VERSION")) == 0) {
         http_free_response(resp);
         return NULL;
