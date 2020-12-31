@@ -76,18 +76,6 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
                 printf("==========================================================\n");
             }
 
-            if (tcpHeader->th_flags & TH_SYN) {
-                //print syn tcp
-            }
-
-            if (tcpHeader->th_flags & TH_ACK) {
-                //print ack tcp
-            }
-
-            if (tcpHeader->th_flags & TH_ACCEPT) {
-                //print ack accept
-            }
-
             //UDP fragment
         } else if (ipHeader->ip_p == IPPROTO_UDP) {
             udpHeader = (struct udphdr *) (packet + sizeof(struct ether_header) + sizeof(struct ip));
