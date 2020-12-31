@@ -1,5 +1,6 @@
 #include "utils.h"
 
+
 //methode to parse packet
 void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
 
@@ -15,7 +16,7 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
     u_int sourcePort, destPort;
     u_char *data;
 
-    size_t dataLength = 0;
+    size_t dataLength;
 
     //ethernet fragment
     ethernetHeader = (struct ether_header *) packet;
@@ -28,8 +29,6 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
         inet_ntop(AF_INET, &(ipHeader->ip_src), sourceIP, INET_ADDRSTRLEN);
         inet_ntop(AF_INET, &(ipHeader->ip_dst), destIP, INET_ADDRSTRLEN);
 
-        printf("\tIP src : %s | IP dst : %s\n", sourceIP, destIP);
-
 
 
         //TCP fragment
@@ -41,7 +40,7 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
 
-            printf("\tPort src : %u | Port dst : %u\n", sourcePort, destPort);
+            print_ip_port(sourceIP, destIP, sourcePort, destPort);
 
             //http port = 80
             if (sourcePort == 80 || destPort == 80) {
@@ -98,8 +97,8 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
 
-            printf("\tPort src : %u\n", sourcePort);
-            printf("\tPort dst : %u\n", destPort);
+            print_ip_port(sourceIP, destIP, sourcePort, destPort);
+
 
             if (sourcePort == 53 || destPort == 53) {
 
@@ -118,4 +117,9 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             }
         }
     }
+}
+
+//methode to print ip and port to src and dest
+void print_ip_port(const char *sourceIP, const char *destIP, u_int sourcePort, u_int destPort) {
+    printf(" Ip src : %s Port : %u | Ip src : %s Port : %u\n", sourceIP, sourcePort, destIP, destPort);
 }
