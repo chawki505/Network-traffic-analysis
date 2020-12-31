@@ -128,11 +128,11 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
                 //print http protocol
                 struct Request *req = parse_request((const char *) data);
                 if (req) {
-                    printf("Method: %d\n", req->method);
+                    printf("Method: %s\n", req->method);
                     printf("Request-URI: %s\n", req->url);
                     printf("HTTP-Version: %s\n", req->version);
                     puts("Headers:");
-                    struct Header *h;
+                    struct Request_header *h;
                     for (h = req->headers; h; h = h->next) {
                         printf("%32s: %s\n", h->name, h->value);
                     }
@@ -154,23 +154,22 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
 
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
-            
+
             if (sourcePort == 53 || destPort == 53) {
-                
+
                 printf("======================= DNS PACKET =======================\n\n");
                 dns_print_header(data);
-                if(dns_get_type(data) == 1){
-                    struct dns_response * a = dns_get_answer(data, dataLength);
+                if (dns_get_type(data) == 1) {
+                    struct dns_response *a = dns_get_answer(data, dataLength);
                     dns_print_answer(a);
                     free(a);
-                }
-                else {
-                    struct dns_query * q = dns_get_question(data, dataLength);
+                } else {
+                    struct dns_query *q = dns_get_question(data, dataLength);
                     dns_print_question(q);
                     free(q);
                 }
                 printf("==========================================================\n");
-                
+
             }
         } else if (ipHeader->ip_p == IPPROTO_ICMP) {
             //print icmp
