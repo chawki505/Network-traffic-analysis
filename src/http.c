@@ -1,16 +1,18 @@
 #include "http.h"
 
 #define METHODS_LEN 9
-char *METHODS[METHODS_LEN] = {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "UNSUPPORTED"};
-#define VERSION_LEN 5
-char *VERSIONS[VERSION_LEN] = {"HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2", "UNSUPPORTED_VERSION"};
+char *METHODS[METHODS_LEN] = {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE",
+                              "UNSUPPORTED_METHODE"};
+
+#define VERSION_LEN 4
+char *VERSIONS[VERSION_LEN] = {"HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "UNSUPPORTED_VERSION"};
 
 
 //parsing http request
 struct Http_Request *http_parse_request(char *data, size_t length) {
 
     char *raw = malloc(length + 1);
-    char *init_raw = raw;
+    char *init_raw = raw; // to use in free()
     if (!raw) {
         printf("Memory not allocated.\n");
         exit(EXIT_FAILURE);
@@ -64,12 +66,13 @@ struct Http_Request *http_parse_request(char *data, size_t length) {
             break;
 
         } else {
-            req->method = METHODS[UNSUPPORTED];
+            req->method = METHODS[UNSUPPORTED_METHODE];
         }
         raw += 1;
     }
 
-    if (memcmp(req->method, METHODS[UNSUPPORTED], strlen("UNSUPPORTED")) == 0) {
+    //test if method is unsupported to parsing
+    if (memcmp(req->method, METHODS[UNSUPPORTED_METHODE], strlen("UNSUPPORTED_METHODE")) == 0) {
         http_free_request(req);
         return NULL;
     }
@@ -164,11 +167,13 @@ struct Http_Request *http_parse_request(char *data, size_t length) {
     memset(req->body, 0, body_len + 1);
     memcpy(req->body, raw, body_len);
     req->body[body_len] = '\0';
+
     free(init_raw);
+
     return req;
 }
 
-
+//parsing http response
 struct Http_Response *http_parse_response(char *data, size_t length) {
 
     char *raw = malloc(length + 1);
@@ -190,7 +195,7 @@ struct Http_Response *http_parse_response(char *data, size_t length) {
 
     memset(resp, 0, sizeof(*resp));
 
-    // Version HTTP
+    // HTTP Version
     size_t version_len = 0;
     for (size_t i = 0; i < 20; ++i) {
         version_len = strcspn(raw, " ");
@@ -211,6 +216,7 @@ struct Http_Response *http_parse_response(char *data, size_t length) {
         raw += 1;
     }
 
+    //test if is unsupoted version
     if (memcmp(resp->version, VERSIONS[UNSUPPORTED_VERSION], strlen("UNSUPPORTED_VERSION")) == 0) {
         http_free_response(resp);
         return NULL;
