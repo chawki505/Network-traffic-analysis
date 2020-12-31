@@ -171,8 +171,6 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
                 printf("==========================================================\n");
 
             }
-        } else if (ipHeader->ip_p == IPPROTO_ICMP) {
-            //print icmp
         }
     }
 }
