@@ -1,7 +1,3 @@
-//
-// Created by chawki chouib on 30/12/2020.
-//
-
 #ifndef MINIPROJETDPI_HTTP_H
 #define MINIPROJETDPI_HTTP_H
 
@@ -12,26 +8,27 @@
 #include <arpa/inet.h>
 
 
-typedef enum Method {
-    UNSUPPORTED, GET, HEAD
-} Method;
-typedef struct Header {
+typedef enum Request_methods {
+    GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, UNSUPPORTED
+} Request_methods;
+
+typedef struct Request_header {
     char *name;
     char *value;
-    struct Header *next;
-} Header;
+    struct Request_header *next;
+} Request_header;
 
 typedef struct Request {
-    enum Method method;
+    char *method;
     char *url;
     char *version;
-    struct Header *headers;
+    struct Request_header *headers;
     char *body;
 } Request;
 
 struct Request *parse_request(const char *data);
 
-void free_header(struct Header *header);
+void free_header(struct Request_header *header);
 
 void free_request(struct Request *request);
 
