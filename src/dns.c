@@ -146,14 +146,17 @@ void dns_print_header(u_char * data){
     free(flags);
 }
 
+#define DATASIZE 1024
+
 char * dns_get_response_data(struct dns_response * a){
     #define A 1
     #define NS 2
     #define CNAME 5
     #define PTR 12
     #define MX 15
-    char * res = NULL;
+    char * res = malloc(DATASIZE);
     switch(a->atype){
+        case CNAME :
         case A :
             if(a->aclass != 1) break;
             struct in_addr ip_addr;
@@ -161,17 +164,18 @@ char * dns_get_response_data(struct dns_response * a){
             res = inet_ntoa(ip_addr);
             break;
         case NS :
-        case CNAME :
         case PTR :
-            res = (char *) a->data;
+            if(a->data_length < DATASIZE)
+                memcpy(res, a->data, a->data_length);
+            else
+                memcpy(res, "UNK", strlen("UNK"));
             break;
         case MX :
             ;
             uint16_t preference;
             memcpy(&preference, a->data, sizeof(uint16_t));
             char * exchange = parse_name(a->data + sizeof(uint16_t));
-            res = malloc(512);
-            snprintf(res, 512, "Preference %d | Exchange %s", preference, exchange);
+            snprintf(res,DATASIZE, "Preference %d | Exchange %s", preference, exchange);
             break;
         default :
             res = "OTHER";
