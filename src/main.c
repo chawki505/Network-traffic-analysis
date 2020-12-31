@@ -15,6 +15,7 @@
 
 #include "utils.h"
 #include "dns.h"
+#include "http.h"
 
 void packetHandler(struct pcap_pkthdr *header, const u_char *packet);
 
@@ -125,6 +126,20 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             //http port = 80 , https port = 443
             if (sourcePort == 80 || sourcePort == 443 || destPort == 80 || destPort == 443) {
                 //print http protocol
+                struct Request *req = parse_request((const char *) data);
+                if (req) {
+                    printf("Method: %d\n", req->method);
+                    printf("Request-URI: %s\n", req->url);
+                    printf("HTTP-Version: %s\n", req->version);
+                    puts("Headers:");
+                    struct Header *h;
+                    for (h = req->headers; h; h = h->next) {
+                        printf("%32s: %s\n", h->name, h->value);
+                    }
+                    puts("message-body:");
+                    puts(req->body);
+                }
+                free_request(req);
             }
 
             if (tcpHeader->th_flags & TH_SYN) {
