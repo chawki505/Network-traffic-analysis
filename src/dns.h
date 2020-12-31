@@ -9,7 +9,9 @@
 
 #define DNS_NAME_MAXSIZE 256
 
-
+/*
+DNS header structure
+*/
 struct dnsheader {
 	uint16_t query_id;
 	uint16_t flags;
@@ -19,12 +21,18 @@ struct dnsheader {
 	uint16_t ADDCOUNT;
 };
 
+/*
+Request/Query structure from a client to a server.
+*/
 struct dns_query {
 	char * qname;
 	uint16_t qtype;
 	uint16_t qclass;
 };
 
+/*
+Response structure from a server to client containing a copy of  the question answered.
+*/
 struct dns_response {
 	struct dns_query * query;
 	char * aname;
@@ -35,12 +43,24 @@ struct dns_response {
 	u_char * data;
 };
 
-
-struct dns_query * dns_get_question(u_char * data, unsigned int dataLength);
+/*
+Parse the DNS packet and return the QUERY field.
+*/
+struct dns_query * dns_get_query(u_char * data, unsigned int dataLength);
+/*
+Parse the DNS packet and return the ANSWER field.
+*/
 struct dns_response * dns_get_answer(u_char * data, unsigned int dataLength);
-// returns 1 if RESPONSE and 0 if REQUEST
+/*
+Check if the type of the packet is a Query or Answer.
+Returns 1 if RESPONSE and 0 if QUERY
+*/
 int dns_get_type(u_char * data);
-void dns_print_question(struct dns_query * q);
+
+/*
+Print functions for the above structures.
+*/
+void dns_print_query(struct dns_query * q);
 void dns_print_header(u_char * data);
 void dns_print_answer(struct dns_response * a);
 

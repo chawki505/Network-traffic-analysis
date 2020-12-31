@@ -164,8 +164,8 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
                     dns_print_answer(a);
                     free(a);
                 } else {
-                    struct dns_query *q = dns_get_question(data, dataLength);
-                    dns_print_question(q);
+                    struct dns_query *q = dns_get_query(data, dataLength);
+                    dns_print_query(q);
                     free(q);
                 }
                 printf("==========================================================\n");
