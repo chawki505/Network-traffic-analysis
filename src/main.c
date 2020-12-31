@@ -6,8 +6,6 @@
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <net/if.h>
-#include <netinet/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
@@ -66,8 +64,8 @@ int main(int argc, char *argv[]) {
         printf("\n\t%d - Packet of length [%d bytes] [%d bits]\n", compteur, header->len, header->len * 8);
         printf("\n\t");
         for (int i = 0; i < header->len; i++) {
-            if (i % 8 == 0 && i != 0) printf("\n\t");
-            printf("%2X ", packet[i]);
+            if (i % 16 == 0 && i != 0) printf("\n\t");
+            printf("%02X ", packet[i]);
         }
         compteur++;
         printf("\n\n");
@@ -100,7 +98,7 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
     u_int sourcePort, destPort;
     u_char *data;
 
-    unsigned int dataLength = 0;
+    size_t dataLength = 0;
 
     //ethernet fragment
     ethernetHeader = (struct ether_header *) packet;
@@ -123,27 +121,51 @@ void packetHandler(struct pcap_pkthdr *header, const u_char *packet) {
             data = (u_char *) (packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
             dataLength = header->len - (sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct tcphdr));
 
-            //http port = 80 , https port = 443
-            if (sourcePort == 80 || sourcePort == 443 || destPort == 80 || destPort == 443) {
+            //http port = 80
+            if (sourcePort == 80 || destPort == 80) {
+                printf("======================= HTTP PACKET =======================\n\n");
                 //print http protocol
-                struct Request *req = parse_request((const char *) data);
+                struct Http_Request *req = http_parse_request((char *) data, dataLength);
                 if (req) {
                     printf("Method: %s\n", req->method);
                     printf("Request-URI: %s\n", req->url);
                     printf("HTTP-Version: %s\n", req->version);
-                    puts("Headers:");
-                    struct Request_header *h;
+                    printf("Headers:\n");
+                    struct Http_Header *h;
                     for (h = req->headers; h; h = h->next) {
-                        printf("%32s: %s\n", h->name, h->value);
+                        printf("\t%s: %s\n", h->name, h->value);
                     }
-                    puts("message-body:");
-                    puts(req->body);
+                    printf("message-body: %s\n", req->body);
+                } else {
+                    struct Http_Response *resp = http_parse_response((char *) data, dataLength);
+                    if (resp) {
+                        printf("HTTP-Version: %s\n", resp->version);
+                        printf("Status code: %s\n", resp->status_code);
+                        printf("Status text: %s\n", resp->status_text);
+                        printf("Headers:\n");
+                        struct Http_Header *h;
+                        for (h = resp->headers; h; h = h->next) {
+                            printf("\t%s: %s\n", h->name, h->value);
+                        }
+                        printf("message-body: %s\n", resp->body);
+                    }
+                    http_free_response(resp);
                 }
-                free_request(req);
+                http_free_request(req);
+
+                printf("==========================================================\n");
             }
 
             if (tcpHeader->th_flags & TH_SYN) {
                 //print syn tcp
+            }
+
+            if (tcpHeader->th_flags & TH_ACK) {
+                //print ack tcp
+            }
+
+            if (tcpHeader->th_flags & TH_ACCEPT) {
+                //print ack accept
             }
 
             //UDP fragment
