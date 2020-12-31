@@ -2,12 +2,13 @@ include Makefile.version
 
 CC=gcc
 LDFLAGS=`pkg-config --libs libpcap`
-CFLAGS=-Wall `pkg-config --cflags libpcap` \
-		-g
+CFLAGS=-Wall -g `pkg-config --cflags libpcap`
+
 OBJ=\
 	src/main.o \
 	src/utils.o \
-	src/dns.o
+	src/dns.o \
+	src/http.o
 
 TARGET=dpi
 
