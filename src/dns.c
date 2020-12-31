@@ -1,12 +1,18 @@
 #include "dns.h"
 
-void dns_print_question(struct dns_query * q){
-    printf("** DNS QUERY :\n");
-    printf("\tNAME : %s\n", q->qname);
-    printf("\tTYPE : %d\n", q->qtype);
-    printf("\tCLASS : %d\n", q->qclass);
-}
+/*
+Max size of data field in answer.
+*/
+#define DATASIZE 1024
 
+
+/*
+Auxiliary functions
+*/
+
+/*
+Parse string in format "3etu4gouv2fr" and returns "etu.gouv.fr".
+*/
 char * parse_name(u_char * unparsed_name){
     char * name = malloc(DNS_NAME_MAXSIZE);
     for(int i=0; i < strlen((const char*)unparsed_name); i++) 
@@ -23,20 +29,9 @@ char * parse_name(u_char * unparsed_name){
 	return name;
 }
 
-struct dns_query * dns_get_question(u_char * data, unsigned int dataLength){
-    struct dns_query * qst = malloc(sizeof(struct dns_query));
-    memset(qst, 0, sizeof(struct dns_query));
-    char * name = parse_name(data + sizeof(struct dnsheader));
-    uint32_t offset = sizeof(struct dnsheader) + strlen(name)+2;
-    qst->qname = name;
-    memcpy(&(qst->qtype), data + offset, sizeof(uint16_t));
-    qst->qtype = ntohs(qst->qtype);
-    offset +=2;
-    memcpy(&(qst->qclass), data + offset, sizeof(uint16_t));
-    qst->qclass = ntohs(qst->qclass);
-    return qst;
-}
-
+/*
+Create mask of bits from a to b.
+*/
 unsigned  createMask(unsigned a, unsigned b)
 {
    unsigned r = 0;
@@ -46,6 +41,9 @@ unsigned  createMask(unsigned a, unsigned b)
    return r;
 }
 
+/*
+Parse the control field's bits and return string corresponding to active flags.
+*/
 char * dns_parse_flags(uint16_t control){
     char * flags = malloc(512);
     memset(flags, 0, 512);
@@ -133,21 +131,9 @@ char * dns_parse_flags(uint16_t control){
 
 }
 
-void dns_print_header(u_char * data){
-    struct dnsheader * header = (struct dnsheader *) data;
-    char * flags = dns_parse_flags(ntohs(header->flags));
-    printf("** DNS HEADER : \n");
-    printf("\tQUERY ID = %hu\n", ntohs(header->query_id));
-    printf("\tFLAGS = %s\n", flags);
-    printf("\tQUESTION COUNT = %hu\n", ntohs(header->QDCOUNT));
-    printf("\tANSWER COUNT = %hu\n", ntohs(header->ANCOUNT));
-    printf("\tAUTHORITY COUNT = %hu\n", ntohs(header->AUTHCOUNT));
-    printf("\tADDITIONAL COUNT = %hu\n", ntohs(header->ADDCOUNT));
-    free(flags);
-}
-
-#define DATASIZE 1024
-
+/*
+Returns data corresponding to answer type and class  in string format.
+*/
 char * dns_get_response_data(struct dns_response * a){
     #define A 1
     #define NS 2
@@ -184,6 +170,9 @@ char * dns_get_response_data(struct dns_response * a){
     return res;
 }
 
+/*
+Parse DNS response and return it's type in string format.
+*/
 char * dns_get_response_type(struct dns_response * a){
     #define A 1
     #define NS 2
@@ -214,8 +203,44 @@ char * dns_get_response_type(struct dns_response * a){
     return res;
 }
 
+/*
+Return size of Query inside the packet. Useful to calculate the offset to Answer struct.
+*/
+uint32_t dns_get_query_size(struct dns_query * q){
+    return sizeof(uint16_t)*2 + strlen(q->qname) + 2;
+}
+
+
+/*
+Main functions
+*/
+
+/*
+Print functions.
+*/
+
+void dns_print_query(struct dns_query * q){
+    printf("** DNS QUERY :\n");
+    printf("\tNAME : %s\n", q->qname);
+    printf("\tTYPE : %d\n", q->qtype);
+    printf("\tCLASS : %d\n", q->qclass);
+}
+
+void dns_print_header(u_char * data){
+    struct dnsheader * header = (struct dnsheader *) data;
+    char * flags = dns_parse_flags(ntohs(header->flags));
+    printf("** DNS HEADER : \n");
+    printf("\tQUERY ID = %hu\n", ntohs(header->query_id));
+    printf("\tFLAGS = %s\n", flags);
+    printf("\tQUESTION COUNT = %hu\n", ntohs(header->QDCOUNT));
+    printf("\tANSWER COUNT = %hu\n", ntohs(header->ANCOUNT));
+    printf("\tAUTHORITY COUNT = %hu\n", ntohs(header->AUTHCOUNT));
+    printf("\tADDITIONAL COUNT = %hu\n", ntohs(header->ADDCOUNT));
+    free(flags);
+}
+
 void dns_print_answer(struct dns_response * a){
-    dns_print_question(a->query);
+    dns_print_query(a->query);
     printf("** DNS ANSWER :\n");
     printf("\tNAME : %s\n", a->aname);
     printf("\tTYPE : %s\n", dns_get_response_type(a));
@@ -225,10 +250,10 @@ void dns_print_answer(struct dns_response * a){
     printf("\tDATA : %s\n", dns_get_response_data(a));
 }
 
-uint32_t dns_get_question_size(struct dns_query * q){
-    return sizeof(uint16_t)*2 + strlen(q->qname) + 2;
-}
-
+/*
+Check if the type of the packet is a Query or Answer.
+Returns 1 if RESPONSE and 0 if QUERY
+*/
 int dns_get_type(u_char * data) {
     struct dnsheader * header = (struct dnsheader *) data;
     uint16_t control = header->flags;
@@ -236,27 +261,32 @@ int dns_get_type(u_char * data) {
     return 0;
 }
 
+/*
+Getters for the Query and Answer structures.
+*/
 
-char * extract_line(u_char * start){
-    u_char * p = start+1;
-    char * res = malloc(DNS_NAME_MAXSIZE);
-    uint32_t i = 0;
-    while(*p != '\n'){
-        res[i] = *p;
-        i++;
-        p++;
-    }
-    return res;
+struct dns_query * dns_get_query(u_char * data, unsigned int dataLength){
+    struct dns_query * qst = malloc(sizeof(struct dns_query));
+    memset(qst, 0, sizeof(struct dns_query));
+    char * name = parse_name(data + sizeof(struct dnsheader));
+    uint32_t offset = sizeof(struct dnsheader) + strlen(name)+2;
+    qst->qname = name;
+    memcpy(&(qst->qtype), data + offset, sizeof(uint16_t));
+    qst->qtype = ntohs(qst->qtype);
+    offset +=2;
+    memcpy(&(qst->qclass), data + offset, sizeof(uint16_t));
+    qst->qclass = ntohs(qst->qclass);
+    return qst;
 }
 
 struct dns_response * dns_get_answer(u_char * data, unsigned int dataLength){
 
     struct dns_response * ans = malloc(sizeof(struct dns_response));
     memset(ans, 0, sizeof(struct dns_response));
-    ans->query = dns_get_question(data, dataLength);
+    ans->query = dns_get_query(data, dataLength);
 
 
-    uint32_t offset = sizeof(struct dnsheader) + dns_get_question_size(ans->query);
+    uint32_t offset = sizeof(struct dnsheader) + dns_get_query_size(ans->query);
     unsigned mask = createMask(14,15);
     uint16_t decide;
     memcpy(&decide, data + offset, sizeof(uint16_t));
